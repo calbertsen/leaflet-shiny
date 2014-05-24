@@ -1,3 +1,5 @@
+var HeatLayers = [];
+
 function recycle(values, length, inPlace) {
   if (length === 0 && !inPlace)
     return [];
@@ -400,6 +402,34 @@ var dataframe = (function() {
   methods.clearPopups = function() {
     this.popups.clear();
   };
+
+  methods.heatLayer = function(lat,lng,wei,options,add=false){
+      (function() {
+	  var i = 0;
+	  while (i < HeatLayers.length && add == false){
+	      this.removeLayer(HeatLayers[i]);
+	      i++;
+	  }
+	  if (options === null || typeof(options) === 'undefined' || options.length == 0) {
+	      options = {radius: 10};
+	  }
+	  var coordPos = 0;
+          var points = [];
+          while (coordPos < lat.length) {
+              points.push([lat[coordPos], lng[coordPos], wei[coordPos]]);
+              coordPos++;
+          }
+          //points.pop();
+	  var heat = L.heatLayer(points,options).addTo(this);
+	  HeatLayers.push(heat);
+	  //HeatLayers.pop();
+	  //heat.redraw();
+	  
+	  
+      }).call(this);
+  };
+  
+  
 
   function LayerStore(map) {
     this._layers = {};

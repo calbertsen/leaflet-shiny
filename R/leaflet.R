@@ -73,7 +73,8 @@ createLeafletMap <- function(session, outputId) {
     stub(addPolygon(lat, lng, layerId, options, defaultOptions)),
     stub(showPopup(lat, lng, content, layerId = NULL, options=list())),
     stub(removePopup(layerId)),
-    stub(clearPopups())
+    stub(clearPopups()),
+    stub(heatLayer(lat,lng,wei,options,add=FALSE))
   )
 }
 
@@ -95,7 +96,8 @@ leafletMap <- function(
     singleton(
       tags$head(
         tags$link(rel="stylesheet", type="text/css", href="leaflet/leaflet.css"),
-        tags$script(src="leaflet/leaflet.js"),
+	tags$script(src="leaflet/leaflet.js"),
+        tags$script(src="leaflet/leaflet-heat.js"),
         tags$script(src="leaflet/binding.js")
       )
     ),
