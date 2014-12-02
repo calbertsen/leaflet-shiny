@@ -183,6 +183,7 @@ var dataframe = (function() {
         map.markers = new LayerStore(map);
         map.shapes = new LayerStore(map);
         map.popups = new LayerStore(map);
+        map.geojson = new LayerStore(map);
         
         // When the map is clicked, send the coordinates back to the app
         map.on('click', function(e) {
@@ -233,49 +234,63 @@ var dataframe = (function() {
     }
   });
   
-  function mergeOptions(length, options, eachOptions) {
-    if (!eachOptions)
-      return function() { return options || {}; }
-
-    var keys = [];
-    $.each(eachOptions, function(key, value) {
-      eachOptions[key] = recycle(eachOptions[key], length);
-      keys.push(key);
-    });
-
-    var allOptions = [];
-    for (var i = 0; i < length; i++) {
-      console.log(i);
-      var thisOptions = {};
-      for (var j = 0; j < keys.length; j++)
-        thisOptions[keys[j]] = eachOptions[keys[j]][i];
-      allOptions.push($.extend({}, options, thisOptions));
-    }
-    return function(index) { return allOptions[index]; };
-  }
-
   var methods = {};
 
   methods.setView = function(lat, lng, zoom, forceReset) {
     this.setView([lat, lng], zoom, forceReset);
   };
 
-  methods.addMarker = function(lat, lng, layerId, options) {
-    var self = this;
-    var marker = L.marker([lat, lng], options);
-    this.markers.add(marker, layerId);
-    marker.on('click', function(e) {
-      Shiny.onInputChange(self.id + '_marker_click', {
-        id: layerId,
-        lat: e.target.getLatLng().lat,
-        lng: e.target.getLatLng().lng,
-        '.nonce': Math.random()  // force reactivity
-      });
-    });
+  methods.addMarker = function(lat, lng, layerId, options, eachOptions) {
+    var df = dataframe.create()
+      .col('lat', lat)
+      .col('lng', lng)
+      .col('layerId', layerId)
+      .cbind(options)
+      .cbind(eachOptions);
+
+    for (var i = 0; i < df.nrow(); i++) {
+      (function() {
+        var marker = L.marker([df.get(i, 'lat'), df.get(i, 'lng')], df.get(i));
+        var thisId = df.get(i, 'layerId');
+        this.markers.add(marker, thisId);
+        marker.on('click', mouseHandler(this.id, thisId, 'marker_click'), this);
+        marker.on('mouseover', mouseHandler(this.id, thisId, 'marker_mouseover'), this);
+        marker.on('mouseout', mouseHandler(this.id, thisId, 'marker_mouseout'), this);
+      }).call(this);
+    }
+  };
+
+  methods.addCircleMarker = function(lat, lng, radius, layerId, options, eachOptions) {
+    var df = dataframe.create()
+      .col('lat', lat)
+      .col('lng', lng)
+      .col('radius', radius)
+      .col('layerId', layerId)
+      .cbind(options)
+      .cbind(eachOptions);
+
+    for (var i = 0; i < df.nrow(); i++) {
+      (function() {
+        var circle = L.circleMarker([df.get(i, 'lat'), df.get(i, 'lng')], df.get(i));
+        var thisId = df.get(i, 'layerId');
+        this.markers.add(circle, thisId);
+        circle.on('click', mouseHandler(this.id, thisId, 'marker_click'), this);
+        circle.on('mouseover', mouseHandler(this.id, thisId, 'marker_mouseover'), this);
+        circle.on('mouseout', mouseHandler(this.id, thisId, 'marker_mouseout'), this);
+      }).call(this);
+    }
+  };
+
+  methods.removeMarker = function(layerId) {
+    this.markers.remove(layerId);
   };
 
   methods.clearMarkers = function() {
     this.markers.clear();
+  };
+
+  methods.removeShape = function(layerId) {
+    this.shapes.remove(layerId);
   };
 
   methods.clearShapes = function() {
@@ -288,31 +303,29 @@ var dataframe = (function() {
     ]);
   };
 
-  methods.addRectangle = function(lat1, lng1, lat2, lng2, layerId, options) {
-    var self = this;
-    lat1 = recycle(lat1);
-    lng1 = recycle(lng1, lat1.length);
-    lat2 = recycle(lat2, lat1.length);
-    lng2 = recycle(lng2, lat1.length);
-    layerId = recycle(layerId, lat1.length);
-    
-    for (var i = 0; i < lat1.length; i++) {
+  methods.addRectangle = function(lat1, lng1, lat2, lng2, layerId, options, eachOptions) {
+    var df = dataframe.create()
+      .col('lat1', lat)
+      .col('lng1', lng)
+      .col('lat2', lat)
+      .col('lng2', lng)
+      .col('layerId', layerId)
+      .cbind(options)
+      .cbind(eachOptions);
+
+    for (var i = 0; i < df.nrow(); i++) {
       (function() {
         var rect = L.rectangle([
-          [lat1[i], lng1[i]],
-          [lat2[i], lng2[i]]
-        ], options);
-        var thisId = layerId[i];
-        self.shapes.addLayer(rect, thisId);
-        rect.on('click', function(e) {
-          Shiny.onInputChange(self.id + '_shape_click', {
-            id: thisId,
-            lat: e.target.getLatLng().lat,
-            lng: e.target.getLatLng().lng,
-            '.nonce': Math.random()  // force reactivity
-          });
-        });
-      })();
+            [df.get(i, 'lat1'), df.get(i, 'lng1')],
+            [df.get(i, 'lat2'), df.get(i, 'lng2')]
+          ],
+          df.get(i));
+        var thisId = df.get(i, 'layerId');
+        this.shapes.add(rect, thisId);
+        rect.on('click', mouseHandler(this.id, thisId, 'shape_click'), this);
+        rect.on('mouseover', mouseHandler(this.id, thisId, 'shape_mouseover'), this);
+        rect.on('mouseout', mouseHandler(this.id, thisId, 'shape_mouseout'), this);
+      }).call(this);
     }
   };
   
@@ -354,16 +367,16 @@ var dataframe = (function() {
     }
   };
 
-  function mouseHandler(mapId, layerId, eventName) {
+  function mouseHandler(mapId, layerId, eventName, extraInfo) {
     return function(e) {
       var lat = e.target.getLatLng ? e.target.getLatLng().lat : null;
       var lng = e.target.getLatLng ? e.target.getLatLng().lng : null;
-      Shiny.onInputChange(mapId + '_' + eventName, {
+      Shiny.onInputChange(mapId + '_' + eventName, $.extend({
         id: layerId,
         lat: lat,
         lng: lng,
         '.nonce': Math.random()  // force reactivity
-      });
+      }, extraInfo));
     };
   }
 
@@ -386,6 +399,35 @@ var dataframe = (function() {
         circle.on('mouseout', mouseHandler(this.id, thisId, 'shape_mouseout'), this);
       }).call(this);
     }
+  };
+  
+  methods.addGeoJSON = function(data, layerId) {
+    var self = this;
+    if (typeof(data) === "string") {
+      data = JSON.parse(data);
+    }
+    
+    var globalStyle = data.style || {};
+    
+    var gjlayer = L.geoJson(data, {
+      style: function(feature) {
+        if (feature.style || feature.properties.style) {
+          return $.extend({}, globalStyle, feature.style, feature.properties.style);
+        } else {
+          return globalStyle;
+        }
+      },
+      onEachFeature: function(feature, layer) {
+        var extraInfo = {
+          featureId: feature.id,
+          properties: feature.properties
+        };
+        layer.on("click", mouseHandler(self.id, layerId, "geojson_click", extraInfo), this);
+        layer.on("mouseover", mouseHandler(self.id, layerId, "geojson_mouseover", extraInfo), this);
+        layer.on("mouseout", mouseHandler(self.id, layerId, "geojson_mouseout", extraInfo), this);
+      }
+    });
+    this.geojson.add(gjlayer, layerId);
   };
 
   methods.showPopup = function(lat, lng, content, layerId, options) {
@@ -429,9 +471,7 @@ var dataframe = (function() {
       }).call(this);
   };
   
-  
-
-  function LayerStore(map) {
+    function LayerStore(map) {
     this._layers = {};
     this._group = L.layerGroup().addTo(map);
   }
@@ -474,5 +514,11 @@ var dataframe = (function() {
     }
     return keys;
   };
+  /*
+  function unflattenLatLng(lat, lng, levels) {
+    var stack = [];
+    function 
+  }
+  */
 
 })();
