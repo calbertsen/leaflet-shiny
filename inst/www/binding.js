@@ -367,14 +367,15 @@ var dataframe = (function() {
     }
   };
 
-    methods.addLegend = function(labels, colors, position='bottomright') {
+    methods.addLegend = function(labels, colors, header = null, position='bottomright') {
 	
-var legend = L.control({position: 'bottomright'});
+	var legend = L.control({position: position});
 
 	legend.onAdd = function (map) {
 
-	    var div = L.DomUtil.create('div', 'info legend'),
+	    var div = L.DomUtil.create('div', 'info legend');
 
+	    div.innerHTML += (header != null ? header + '<br>' : '');
 	    // loop through our density intervals and generate a label with a colored square for each interval
 	    for (var i = 0; i < labels.length; i++) {
 		div.innerHTML +=
@@ -385,7 +386,7 @@ var legend = L.control({position: 'bottomright'});
 	    return div;
 	};
 
-	legend.addTo(map);
+	legend.addTo(this);
 
     }; 
 
