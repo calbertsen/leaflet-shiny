@@ -367,6 +367,28 @@ var dataframe = (function() {
     }
   };
 
+    methods.addLegend = function(labels, colors, position='bottomright') {
+	
+var legend = L.control({position: 'bottomright'});
+
+	legend.onAdd = function (map) {
+
+	    var div = L.DomUtil.create('div', 'info legend'),
+
+	    // loop through our density intervals and generate a label with a colored square for each interval
+	    for (var i = 0; i < labels.length; i++) {
+		div.innerHTML +=
+		'<i style=\"background:' + colors[i] + '\"></i> ' +
+		    labels[i] + (labels[i + 1] ? '<br>' : '');
+	    }
+	    
+	    return div;
+	};
+
+	legend.addTo(map);
+
+    }; 
+
   function mouseHandler(mapId, layerId, eventName, extraInfo) {
     return function(e) {
       var lat = e.target.getLatLng ? e.target.getLatLng().lat : null;
