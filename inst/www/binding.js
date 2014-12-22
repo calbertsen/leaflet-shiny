@@ -1,4 +1,5 @@
 var HeatLayers = [];
+var PolygonLayers = [];
 
 function recycle(values, length, inPlace) {
   if (length === 0 && !inPlace)
@@ -366,6 +367,10 @@ var dataframe = (function() {
       }).call(this);
     }
   };
+
+    methods.setPolygonStyle = function(layerId, options) {
+	this.shapes.get(layerId).setStyle(options);
+    };
 
     methods.addLegend = function(labels, colors, header = null, position='bottomright') {
 	

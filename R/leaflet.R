@@ -73,6 +73,7 @@ createLeafletMap <- function(session, outputId) {
     stub(addRectangle(lat1, lng1, lat2, lng2, layerId = NULL, options=list(), eachOptions=list())),
     stub(addPolygon(lat, lng, layerId, options, defaultOptions)),
       stub(addLegend(labels, colors,header = NULL,position = 'bottomright')),
+      stub(setPolygonStyle(layerId, options)),
     stub(addGeoJSON(data, layerId)),
     stub(showPopup(lat, lng, content, layerId = NULL, options=list())),
     stub(removePopup(layerId)),
