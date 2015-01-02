@@ -71,7 +71,7 @@ createLeafletMap <- function(session, outputId) {
     stub(fitBounds(lat1, lng1, lat2, lng2)),
     stub(addCircle(lat, lng, radius, layerId = NULL, options=list(), eachOptions=list())),
     stub(addRectangle(lat1, lng1, lat2, lng2, layerId = NULL, options=list(), eachOptions=list())),
-    stub(addPolygon(lat, lng, layerId, options, defaultOptions)),
+    stub(addPolygon(lat, lng, layerId, options, defaultOptions, holes = NULL)),
       stub(addLegend(labels, colors,header = NULL,position = 'bottomright')),
       stub(setPolygonStyle(layerId, options)),
     stub(addGeoJSON(data, layerId)),

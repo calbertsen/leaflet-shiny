@@ -341,7 +341,7 @@ var dataframe = (function() {
    * @param defaultOptions The default set of options that all polygons
    *   will use.
    */
-  methods.addPolygon = function(lat, lng, layerId, options, defaultOptions) {
+  methods.addPolygon = function(lat, lng, layerId, options, defaultOptions, hole = null) {
     var self = this;
     var coordPos = -1; // index into lat/lng
     var idPos = -1; // index into layerId
@@ -350,16 +350,26 @@ var dataframe = (function() {
     }
     while (++coordPos < lat.length && ++idPos < layerId.length) {
       (function() {
-        var thisId = layerId[idPos];
-        var points = [];
+          var thisId = layerId[idPos];
+          var points = [];
+	  var holes = [];
         while (coordPos < lat.length && lat[coordPos] !== null) {
-          points.push([lat[coordPos], lng[coordPos]]);
+	    if(hole === null || hole[coordPos]===0) {
+		points.push([lat[coordPos], lng[coordPos]]);
+	    }else{
+		holes.push([lat[coordPos], lng[coordPos]]);
+	    }
           coordPos++;
         }
-        points.pop();
+          points.pop();
+	  holes.pop();
         var opt = $.extend(true, {}, defaultOptions,
           options[idPos % options.length]);
-        var polygon = L.polygon(points, opt);
+	  if(holes.length > 0){
+	      var polygon = L.polygon([points,holes], opt);
+	  }else{
+	      var polygon = L.polygon(points, opt);
+	  }
         self.shapes.add(polygon, thisId);
         polygon.on('click', mouseHandler(this.id, thisId, 'shape_click'), this);
         polygon.on('mouseover', mouseHandler(this.id, thisId, 'shape_mouseover'), this);
@@ -369,7 +379,7 @@ var dataframe = (function() {
   };
 
     methods.setPolygonStyle = function(layerId, options) {
-	this.shapes.get(layerId).setStyle(options);
+	this.shapes._layers[layerId].setStyle(options);
     };
 
     methods.addLegend = function(labels, colors, header = null, position='bottomright') {
